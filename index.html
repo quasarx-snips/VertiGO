@@ -35,7 +35,13 @@
     <script type="module" src="src/boot.js"></script>
     <script type="module">
       if (new URLSearchParams(location.search).has('proof'))
-        import('./tools/capture.js').then((module) => module.setupCapture());
+        import('./tools/capture.js')
+          .then((module) => module.setupCapture())
+          .catch((error) => {
+            const overlay = document.getElementById('dev-overlay');
+            overlay.hidden = false;
+            overlay.textContent = 'capture failed: ' + error.message;
+          });
     </script>
   </body>
 </html>

@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "serve": "python tools/serve.py",
+    "test": "node tools/selftest.js",
     "check": "prettier --check . && eslint . && python tools/check.py && python tools/ledger.py",
     "format": "prettier --write .",
     "proof": "python tools/proof.py"
