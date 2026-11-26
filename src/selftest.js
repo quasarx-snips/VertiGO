@@ -1,6 +1,13 @@
 // origin: A
 
-import { RUN_SPEED, TOP_SPEED, TOWER_RADIUS, createPlayer, stepPlayer } from './player.js';
+import {
+  RUN_SPEED,
+  TOP_SPEED,
+  TOWER_RADIUS,
+  createPlayer,
+  stepPlayer,
+  surfaceSpeed,
+} from './player.js';
 
 const STEP = 1 / 120;
 const FLOOR = [{ top: 0 }];
@@ -14,8 +21,7 @@ function airborneRun() {
   for (let i = 0; i < 192; i += 1) {
     const time = i * STEP;
     const controls = { orbit: 1, jump: time < STEP, jumpHeld: !player.grounded || time < STEP };
-    if (!player.grounded)
-      launchSpeed = Math.max(launchSpeed, Math.abs(player.omega) * TOWER_RADIUS);
+    if (!player.grounded) launchSpeed = Math.max(launchSpeed, surfaceSpeed(player));
     stepPlayer(player, STEP, controls, FLOOR);
     apex = Math.max(apex, player.y);
     airTime = Math.max(airTime, player.airTime);
@@ -28,7 +34,7 @@ function timeToRunSpeed() {
   const controls = { orbit: 1, jump: false, jumpHeld: false };
   for (let i = 1; i < 600; i += 1) {
     stepPlayer(player, STEP, controls, FLOOR);
-    if (Math.abs(player.omega) * TOWER_RADIUS >= RUN_SPEED) return i * STEP;
+    if (surfaceSpeed(player) >= RUN_SPEED) return i * STEP;
   }
   return Infinity;
 }
