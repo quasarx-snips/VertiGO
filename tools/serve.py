@@ -43,6 +43,8 @@ class Handler(BaseHTTPRequestHandler):
 
     def _file(self, send_body):
         path = unquote(urlsplit(self.path).path)
+        if path.endswith("/"):
+            path += "index.html"
         target = (self.server.root / path.lstrip("/")).resolve()
         root = self.server.root
         if not target.is_file() or (target != root and root not in target.parents):
@@ -89,7 +91,7 @@ class Handler(BaseHTTPRequestHandler):
 
 def main():
     parser = argparse.ArgumentParser(description="Serve the VertiGO repo root.")
-    parser.add_argument("--port", type=int, default=8080)
+    parser.add_argument("--port", type=int, default=8090)
     parser.add_argument("--root", type=Path, default=ROOT)
     parser.add_argument("--capture", action="store_true", help="accept POST /_capture into proof/")
     args = parser.parse_args()
