@@ -124,47 +124,12 @@
 #test-output {
   position: fixed;
   inset: 0;
+  margin: 0;
   padding: 32px;
   background: var(--ink);
   font-family: var(--font-numeral);
-  overflow: auto;
-}
-
-#test-output h1 {
-  margin: 0 0 18px;
-  font-family: var(--font-body);
-  font-size: 18px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-}
-
-#test-output table {
-  border-collapse: collapse;
   font-size: 14px;
-}
-
-#test-output th,
-#test-output td {
-  padding: 7px 18px 7px 0;
-  text-align: left;
-  border-bottom: 1px solid rgb(220 233 245 / 12%);
-}
-
-#test-output th {
-  color: var(--ice-dim);
-  font-weight: 500;
-}
-
-#test-output tr.pass td:last-child {
-  color: #6ee7a8;
-}
-
-#test-output tr.fail td:last-child {
-  color: var(--vermilion);
-}
-
-#test-output p {
-  margin-top: 18px;
-  font-family: var(--font-body);
-  color: var(--amber);
+  line-height: 2;
+  overflow: auto;
+  white-space: pre;
 }

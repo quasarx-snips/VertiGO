@@ -1,4 +1,4 @@
-import { runSelfTest } from '../src/selftest.js';
+import { runSelfTest } from './measures.js';
 
 const rows = runSelfTest(0);
 for (const row of rows) {

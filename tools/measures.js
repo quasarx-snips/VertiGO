@@ -7,7 +7,7 @@ import {
   createPlayer,
   stepPlayer,
   surfaceSpeed,
-} from './player.js';
+} from '../src/player.js';
 
 const STEP = 1 / 120;
 const FLOOR = [{ top: 0 }];
@@ -91,34 +91,4 @@ export function runSelfTest(cameraRoll) {
       ok: Math.abs(cameraRoll) < 0.01,
     },
   ];
-}
-
-export function renderSelfTest(rows) {
-  const target = document.getElementById('test-output');
-  const failures = rows.filter((row) => !row.ok).length;
-  const body = rows.map(
-    (row) =>
-      '<tr class="' +
-      (row.ok ? 'pass' : 'fail') +
-      '"><td>' +
-      row.label +
-      '</td><td>' +
-      row.expected +
-      '</td><td>' +
-      row.actual +
-      '</td><td>' +
-      (row.ok ? 'pass' : 'FAIL') +
-      '</td></tr>'
-  );
-  target.innerHTML =
-    '<h1>VertiGO day 1 &#183; simulation constants</h1>' +
-    '<table><thead><tr><th>measure</th><th>brief</th><th>measured</th><th></th></tr></thead><tbody>' +
-    body.join('') +
-    '</tbody></table><p>' +
-    (rows.length - failures) +
-    ' / ' +
-    rows.length +
-    ' hold</p>';
-  target.hidden = false;
-  return failures;
 }

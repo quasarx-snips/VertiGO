@@ -6,7 +6,7 @@ import { createInput } from './input.js';
 import { createLoop } from './loop.js';
 import { FLOOR_HEIGHT, createPlayer, stepPlayer, surfaceSpeed } from './player.js';
 import { createScene } from './scene.js';
-import { renderSelfTest, runSelfTest } from './selftest.js';
+import { runSelfTest } from '../tools/measures.js';
 import { wrapDelta } from './vec.js';
 
 const params = new URLSearchParams(location.search);
@@ -113,8 +113,21 @@ window.VERTIGO = {
 if (testMode) {
   hud.hide();
   document.getElementById('touch-pad').hidden = true;
-  window.VERTIGO.testRows = runSelfTest(worstRoll);
-  window.VERTIGO.testFailures = renderSelfTest(window.VERTIGO.testRows);
+  const rows = runSelfTest(worstRoll);
+  window.VERTIGO.testRows = rows;
+  window.VERTIGO.testFailures = rows.filter((row) => !row.ok).length;
+  const output = document.getElementById('test-output');
+  output.textContent = rows
+    .map(
+      (row) =>
+        (row.ok ? 'pass  ' : 'FAIL  ') +
+        row.label.padEnd(22) +
+        row.actual.padEnd(10) +
+        'want ' +
+        row.expected
+    )
+    .join('\n');
+  output.hidden = false;
 } else {
   world.place(player.theta, player.y);
   world.render();
