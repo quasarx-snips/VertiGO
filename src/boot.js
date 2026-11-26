@@ -4,7 +4,7 @@ import { createDebug } from './debug.js';
 import { createHud } from './hud.js';
 import { createInput } from './input.js';
 import { createLoop } from './loop.js';
-import { FLOOR_HEIGHT, TOWER_RADIUS, createPlayer, stepPlayer } from './player.js';
+import { FLOOR_HEIGHT, createPlayer, stepPlayer, surfaceSpeed } from './player.js';
 import { createScene } from './scene.js';
 import { renderSelfTest, runSelfTest } from './selftest.js';
 import { wrapDelta } from './vec.js';
@@ -15,7 +15,7 @@ const testMode = params.has('test');
 
 const world = createScene(document.getElementById('tower'));
 const input = createInput();
-const hud = createHud();
+const hud = createHud(world.rings.length);
 const debug = createDebug();
 
 let player = createPlayer(world.rings[0].top);
@@ -56,7 +56,7 @@ function draw(alpha) {
     roll: world.cameraRoll(),
     theta: player.theta,
     omega: player.omega,
-    speed: Math.abs(player.omega) * TOWER_RADIUS,
+    speed: surfaceSpeed(player),
     y: player.y,
     grounded: player.grounded,
     airTime: player.airTime,
@@ -87,11 +87,18 @@ function measureRoll() {
 }
 worstRoll = measureRoll();
 
+function reset() {
+  player = createPlayer(world.rings[0].top);
+  elapsed = 0;
+  previousTheta = player.theta;
+  previousY = player.y;
+  world.place(player.theta, player.y);
+}
+
 window.VERTIGO = {
   freezeAt(seconds) {
     loop.stop();
-    player = createPlayer(world.rings[0].top);
-    elapsed = 0;
+    reset();
     const frames = Math.round(seconds * 120);
     for (let i = 0; i < frames; i += 1) step(1 / 120);
     previousTheta = player.theta;
@@ -118,4 +125,16 @@ if (proofMode && params.has('t')) window.VERTIGO.freezeAt(Number(params.get('t')
 
 input.onFirstInput(() => {
   if (!proofMode) loop.start();
+});
+
+window.addEventListener('keydown', (event) => {
+  if (event.key !== 'r' || event.repeat) return;
+  reset();
+  draw(1);
+});
+
+window.addEventListener('error', (event) => {
+  const overlay = document.getElementById('dev-overlay');
+  overlay.hidden = false;
+  overlay.textContent = event.message + ' ' + event.filename + ':' + event.lineno;
 });

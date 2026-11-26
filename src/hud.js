@@ -10,7 +10,7 @@ function formatClock(seconds) {
   return minutes + ':' + rest + '.' + cents;
 }
 
-export function createHud() {
+export function createHud(floorCount) {
   const clock = document.getElementById('clock');
   const floor = document.getElementById('floor');
   const shards = document.getElementById('shard-count');
@@ -20,7 +20,8 @@ export function createHud() {
   return {
     update(player, elapsed, floorIndex) {
       clock.textContent = formatClock(elapsed);
-      floor.textContent = String(Math.min(floorIndex + 1, 10)).padStart(2, '0') + '/10';
+      const reached = String(Math.min(floorIndex + 1, floorCount)).padStart(2, '0');
+      floor.textContent = reached + '/' + String(floorCount).padStart(2, '0');
 
       const spin = spinFraction(player);
       spinValue.textContent = surfaceSpeed(player).toFixed(1);
