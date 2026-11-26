@@ -1,0 +1,61 @@
+const browserGlobals = {
+  window: 'readonly',
+  document: 'readonly',
+  requestAnimationFrame: 'readonly',
+  cancelAnimationFrame: 'readonly',
+  performance: 'readonly',
+  location: 'readonly',
+  URLSearchParams: 'readonly',
+  fetch: 'readonly',
+  console: 'readonly',
+  setTimeout: 'readonly',
+  clearTimeout: 'readonly',
+  localStorage: 'readonly',
+  navigator: 'readonly',
+  HTMLElement: 'readonly',
+  Event: 'readonly',
+  CustomEvent: 'readonly',
+  devicePixelRatio: 'readonly',
+  ResizeObserver: 'readonly',
+  matchMedia: 'readonly',
+  THREE: 'readonly',
+  URL: 'readonly',
+  Blob: 'readonly',
+  OffscreenCanvas: 'readonly',
+  Image: 'readonly',
+};
+
+export default [
+  {
+    ignores: ['src/vendor/', 'node_modules/', 'proof/', 'archive/'],
+  },
+  {
+    files: ['**/*.js'],
+    languageOptions: {
+      ecmaVersion: 'latest',
+      sourceType: 'module',
+      globals: browserGlobals,
+    },
+    rules: {
+      'no-console': ['error', { allow: ['warn', 'error'] }],
+      'no-unused-vars': ['error', { args: 'none' }],
+      'no-var': 'error',
+      'prefer-const': 'error',
+      eqeqeq: ['error', 'smart'],
+      'no-implicit-globals': 'error',
+      'no-shadow': 'error',
+      // These names are banned because they are the generic AI filler tells our style guide forbids.
+      'id-denylist': [
+        'error',
+        'data',
+        'result',
+        'handler',
+        'manager',
+        'tempData',
+        'userDataObject',
+        'res',
+        'obj',
+      ],
+    },
+  },
+];

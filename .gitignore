@@ -1,0 +1,11 @@
+# BRIEF.md and decision.md are private working notes and must stay out of the public repo.
+BRIEF.md
+decision.md
+
+node_modules/
+proof/raw/
+proof/*/palette*.png
+.DS_Store
+Thumbs.db
+.vscode/
+*.zip
