@@ -9,3 +9,6 @@ proof/*/palette*.png
 Thumbs.db
 .vscode/
 *.zip
+
+__pycache__/
+*.pyc
