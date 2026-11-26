@@ -46,7 +46,7 @@ function draw(alpha) {
   const theta = previousTheta + wrapDelta(player.theta, previousTheta) * alpha;
   const height = previousY + (player.y - previousY) * alpha;
   world.place(theta, height);
-  world.render();
+  world.render(elapsed);
   hud.update(player, elapsed, Math.floor(player.y / FLOOR_HEIGHT));
 
   const now = performance.now();
@@ -130,7 +130,7 @@ if (testMode) {
   output.hidden = false;
 } else {
   world.place(player.theta, player.y);
-  world.render();
+  world.render(elapsed);
   if (!proofMode) loop.start();
 }
 

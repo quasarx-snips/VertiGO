@@ -1,37 +1,85 @@
 // origin: A
 
 import { FLOOR_HEIGHT, TOWER_RADIUS } from './player.js';
+import { glowTexture, plankTexture, stoneTexture } from './paint.js';
 
-const SKY = 0x1b3a5c;
-const HAZE = 0x2a4a66;
-const SEA = 0x0d1f33;
-const STONE = 0x2a3542;
-const ICE = 0xdce9f5;
-const SPARK = 0xeafbff;
+const SKY_TOP = 0x2e6a92;
+const SKY_HORIZON = 0xffd3a0;
+const SEA_DEEP = 0x14536f;
+const SEA_LIGHT = 0x9fd0e2;
+const SUN_TINT = 0xffe3b0;
+const PLANK = 0x8b5a37;
 const PLAYER_SHELL = 0.55;
 
 const CAMERA_BEHIND = 0.42;
-const CAMERA_STANDOFF = 11;
-const CAMERA_HEIGHT = 4;
+const CAMERA_STANDOFF = 13;
+const CAMERA_HEIGHT = 4.6;
 const CAMERA_AIM = 0.5;
 const FIELD_OF_VIEW = 52;
 
+const SUN_DIRECTION = new THREE.Vector3(0.72, 0.34, 0.4).normalize();
+const PLANKS_PER_RING = 26;
+
 export const RING_TOPS = [0, FLOOR_HEIGHT, FLOOR_HEIGHT * 2];
 
-function ringGeometry(inner, outer, thickness) {
-  const shape = new THREE.Shape();
-  shape.absarc(0, 0, outer, 0, Math.PI * 2, false);
-  const hole = new THREE.Path();
-  hole.absarc(0, 0, inner, 0, Math.PI * 2, true);
-  shape.holes.push(hole);
-  const geometry = new THREE.ExtrudeGeometry(shape, {
-    depth: thickness,
-    bevelEnabled: false,
-    curveSegments: 96,
-  });
-  geometry.rotateX(-Math.PI / 2);
-  return geometry;
+const SKY_VERTEX = `
+varying vec3 vView;
+void main() {
+  vView = position;
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
 }
+`;
+
+const SKY_FRAGMENT = `
+uniform vec3 topColor;
+uniform vec3 horizonColor;
+uniform vec3 sunColor;
+uniform vec3 sunDirection;
+varying vec3 vView;
+void main() {
+  vec3 dir = normalize(vView);
+  float lift = pow(1.0 - clamp(dir.y, 0.0, 1.0), 2.6);
+  vec3 color = mix(topColor, horizonColor, lift);
+  float facing = max(dot(dir, sunDirection), 0.0);
+  color += sunColor * pow(facing, 90.0) * 1.4;
+  color += sunColor * pow(facing, 9.0) * 0.28;
+  gl_FragColor = vec4(color, 1.0);
+}
+`;
+
+const SEA_VERTEX = `
+uniform float uTime;
+varying vec2 vFlat;
+varying float vSwell;
+void main() {
+  vec3 spot = position;
+  float swell = sin(spot.x * 0.055 + uTime * 0.55) * 0.42;
+  swell += sin(spot.y * 0.082 - uTime * 0.4) * 0.3;
+  swell += sin((spot.x + spot.y) * 0.14 + uTime * 0.9) * 0.12;
+  spot.z += swell;
+  vFlat = spot.xy;
+  vSwell = swell;
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(spot, 1.0);
+}
+`;
+
+const SEA_FRAGMENT = `
+uniform float uTime;
+uniform vec3 deepColor;
+uniform vec3 lightColor;
+uniform vec3 sunColor;
+uniform vec3 horizonColor;
+varying vec2 vFlat;
+varying float vSwell;
+void main() {
+  float reach = length(vFlat);
+  vec3 color = mix(deepColor, lightColor, smoothstep(6.0, 120.0, reach) * 0.85);
+  float ripple = sin(vFlat.x * 0.9 + uTime * 1.6) * sin(vFlat.y * 0.75 - uTime * 1.2);
+  color += sunColor * smoothstep(0.9, 1.0, ripple + 0.15 * sin(vFlat.y * 2.3 - uTime * 0.7)) * 0.13;
+  color = mix(color, horizonColor, smoothstep(110.0, 250.0, reach) * 0.95);
+  gl_FragColor = vec4(color, 1.0);
+}
+`;
 
 export function createScene(canvas) {
   const renderer = new THREE.WebGLRenderer({
@@ -41,44 +89,116 @@ export function createScene(canvas) {
   });
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
   renderer.outputEncoding = THREE.sRGBEncoding;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.12;
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(SKY);
-  scene.fog = new THREE.Fog(HAZE, 26, 120);
+  scene.fog = new THREE.Fog(0xf0c8a2, 70, 300);
 
-  const camera = new THREE.PerspectiveCamera(FIELD_OF_VIEW, 1, 0.1, 400);
+  const camera = new THREE.PerspectiveCamera(FIELD_OF_VIEW, 1, 0.1, 500);
   camera.up.set(0, 1, 0);
 
-  scene.add(new THREE.HemisphereLight(0x9fc7e8, 0x0b1622, 0.62));
-  const key = new THREE.DirectionalLight(0xffe9c4, 1.15);
-  key.position.set(9, 18, 7);
+  const sky = new THREE.Mesh(
+    new THREE.SphereGeometry(360, 32, 16),
+    new THREE.ShaderMaterial({
+      side: THREE.BackSide,
+      depthWrite: false,
+      uniforms: {
+        topColor: { value: new THREE.Color(SKY_TOP) },
+        horizonColor: { value: new THREE.Color(SKY_HORIZON) },
+        sunColor: { value: new THREE.Color(SUN_TINT) },
+        sunDirection: { value: SUN_DIRECTION },
+      },
+      vertexShader: SKY_VERTEX,
+      fragmentShader: SKY_FRAGMENT,
+    })
+  );
+  scene.add(sky);
+
+  const glow = glowTexture();
+  const sun = new THREE.Mesh(
+    new THREE.SphereGeometry(15, 24, 16),
+    new THREE.MeshBasicMaterial({ color: 0xfff6da, fog: false })
+  );
+  sun.position.copy(SUN_DIRECTION).multiplyScalar(300);
+  scene.add(sun);
+
+  const halo = new THREE.Sprite(
+    new THREE.SpriteMaterial({
+      map: glow,
+      color: 0xffdca8,
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      fog: false,
+    })
+  );
+  halo.position.copy(SUN_DIRECTION).multiplyScalar(292);
+  halo.scale.set(150, 150, 1);
+  scene.add(halo);
+
+  scene.add(new THREE.HemisphereLight(0xd3e8f5, 0x1d4a5e, 0.5));
+  const key = new THREE.DirectionalLight(0xffd2a1, 1.65);
+  key.position.copy(SUN_DIRECTION).multiplyScalar(60);
+  key.castShadow = true;
+  key.shadow.mapSize.set(2048, 2048);
+  key.shadow.camera.left = -30;
+  key.shadow.camera.right = 30;
+  key.shadow.camera.top = 30;
+  key.shadow.camera.bottom = -30;
+  key.shadow.camera.near = 10;
+  key.shadow.camera.far = 200;
+  key.shadow.bias = -0.0015;
   scene.add(key);
+  const fill = new THREE.DirectionalLight(0x9dc4dc, 0.35);
+  fill.position.set(-24, 18, -30);
+  scene.add(fill);
 
   const tower = new THREE.Mesh(
     new THREE.CylinderGeometry(TOWER_RADIUS, TOWER_RADIUS, 34, 64, 1, true),
-    new THREE.MeshStandardMaterial({ color: STONE, roughness: 0.94, metalness: 0.02 })
+    new THREE.MeshStandardMaterial({ map: stoneTexture(), roughness: 0.88, metalness: 0 })
   );
   tower.position.y = 13;
+  tower.castShadow = true;
+  tower.receiveShadow = true;
   scene.add(tower);
 
-  const slabGeometry = ringGeometry(TOWER_RADIUS - 0.15, TOWER_RADIUS + 1.05, 0.35);
-  const slabMaterial = new THREE.MeshStandardMaterial({
-    color: ICE,
-    roughness: 0.55,
-    metalness: 0.08,
-    emissive: 0x1d4058,
-    emissiveIntensity: 0.35,
+  const plankMap = plankTexture();
+  const plankMaterial = new THREE.MeshStandardMaterial({
+    map: plankMap,
+    color: PLANK,
+    roughness: 0.82,
+    metalness: 0,
   });
+  const plankRadius = TOWER_RADIUS + 0.62;
+  const plankWidth = ((2 * Math.PI * plankRadius) / PLANKS_PER_RING) * 1.07;
+  const plankShape = new THREE.BoxGeometry(plankWidth, 0.32, 1.5);
   for (const top of RING_TOPS) {
-    const slab = new THREE.Mesh(slabGeometry, slabMaterial);
-    slab.position.y = top - 0.35;
-    scene.add(slab);
+    for (let index = 0; index < PLANKS_PER_RING; index += 1) {
+      const angle = (index / PLANKS_PER_RING) * Math.PI * 2;
+      const plank = new THREE.Mesh(plankShape, plankMaterial);
+      plank.position.set(Math.sin(angle) * plankRadius, top - 0.16, Math.cos(angle) * plankRadius);
+      plank.rotation.y = angle;
+      plank.castShadow = true;
+      plank.receiveShadow = true;
+      scene.add(plank);
+    }
   }
 
-  const sea = new THREE.Mesh(
-    new THREE.PlaneGeometry(420, 420),
-    new THREE.MeshStandardMaterial({ color: SEA, roughness: 1, metalness: 0 })
-  );
+  const seaMaterial = new THREE.ShaderMaterial({
+    uniforms: {
+      uTime: { value: 0 },
+      deepColor: { value: new THREE.Color(SEA_DEEP) },
+      lightColor: { value: new THREE.Color(SEA_LIGHT) },
+      sunColor: { value: new THREE.Color(SUN_TINT) },
+      horizonColor: { value: new THREE.Color(SKY_HORIZON) },
+    },
+    vertexShader: SEA_VERTEX,
+    fragmentShader: SEA_FRAGMENT,
+  });
+  const sea = new THREE.Mesh(new THREE.PlaneGeometry(620, 620, 90, 90), seaMaterial);
   sea.rotation.x = -Math.PI / 2;
   sea.position.y = -2.4;
   scene.add(sea);
@@ -86,13 +206,14 @@ export function createScene(canvas) {
   const spark = new THREE.Mesh(
     new THREE.IcosahedronGeometry(0.42, 0),
     new THREE.MeshStandardMaterial({
-      color: SPARK,
-      emissive: 0x7cefff,
-      emissiveIntensity: 2.4,
-      roughness: 0.35,
+      color: 0xfffaf0,
+      emissive: 0xffb45c,
+      emissiveIntensity: 1.6,
+      roughness: 0.3,
       metalness: 0,
     })
   );
+  spark.castShadow = true;
   scene.add(spark);
 
   const shell = TOWER_RADIUS + PLAYER_SHELL;
@@ -126,6 +247,11 @@ export function createScene(canvas) {
     return (Math.asin(Math.max(-1, Math.min(1, right.y))) * 180) / Math.PI;
   }
 
+  function render(elapsed = 0) {
+    seaMaterial.uniforms.uTime.value = elapsed;
+    renderer.render(scene, camera);
+  }
+
   return {
     renderer,
     camera,
@@ -133,6 +259,6 @@ export function createScene(canvas) {
     resize,
     place,
     cameraRoll,
-    render: () => renderer.render(scene, camera),
+    render,
   };
 }
