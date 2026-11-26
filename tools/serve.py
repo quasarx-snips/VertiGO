@@ -2,25 +2,28 @@
 import argparse
 import base64
 import json
+import mimetypes
 import re
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
 ROOT = Path(__file__).resolve().parent.parent
-TYPES = {
+GUESS = {
     ".js": "text/javascript; charset=utf-8",
     ".mjs": "text/javascript; charset=utf-8",
-    ".css": "text/css; charset=utf-8",
     ".html": "text/html; charset=utf-8",
-    ".json": "application/json; charset=utf-8",
-    ".png": "image/png",
-    ".gif": "image/gif",
-    ".svg": "image/svg+xml",
-    ".txt": "text/plain; charset=utf-8",
-    ".md": "text/markdown; charset=utf-8",
+    ".css": "text/css; charset=utf-8",
 }
-CAPTURE_DAY = re.compile(r"[A-Za-z0-9._-]+")
+DAY = re.compile(r"[A-Za-z0-9._-]+")
+
+
+def content_type(path):
+    return (
+        GUESS.get(path.suffix.lower())
+        or mimetypes.guess_type(path.name)[0]
+        or "application/octet-stream"
+    )
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -31,15 +34,15 @@ class Handler(BaseHTTPRequestHandler):
         self._file(False)
 
     def do_POST(self):
-        if not self.server.capture or urlsplit(self.path).path != "/_capture":
-            self._method_not_allowed()
-            return
-        self._capture()
+        if self.server.capture and urlsplit(self.path).path == "/_capture":
+            self._capture()
+        else:
+            self._refuse()
 
-    def _method_not_allowed(self):
-        self._reply(405, b"method not allowed", "text/plain; charset=utf-8")
+    def _refuse(self):
+        self._send(405, b"method not allowed", "text/plain; charset=utf-8")
 
-    do_PUT = do_DELETE = do_PATCH = do_OPTIONS = _method_not_allowed
+    do_PUT = do_DELETE = do_PATCH = do_OPTIONS = _refuse
 
     def _file(self, send_body):
         path = unquote(urlsplit(self.path).path)
@@ -48,44 +51,37 @@ class Handler(BaseHTTPRequestHandler):
         target = (self.server.root / path.lstrip("/")).resolve()
         root = self.server.root
         if not target.is_file() or (target != root and root not in target.parents):
-            self._reply(404, b"not found", "text/plain; charset=utf-8")
+            self._send(404, b"not found", "text/plain; charset=utf-8")
             return
-        payload = target.read_bytes()
-        self.send_response(200)
-        self.send_header("Content-Type", TYPES.get(target.suffix.lower(), "application/octet-stream"))
-        self.send_header("Content-Length", str(len(payload)))
-        self.send_header("Cache-Control", "no-store")
-        self.end_headers()
-        if send_body:
-            self.wfile.write(payload)
+        self._send(200, target.read_bytes() if send_body else b"", content_type(target))
 
     def _capture(self):
         try:
             length = int(self.headers.get("Content-Length", "0"))
             message = json.loads(self.rfile.read(length))
             day = message["day"]
-            if not CAPTURE_DAY.fullmatch(day):
+            if not DAY.fullmatch(day):
                 raise ValueError("day must match [A-Za-z0-9._-]+")
             png = base64.b64decode(message["png"].split(",", 1)[1], validate=True)
-            folder = self.server.root / "proof" / day
-            folder.mkdir(parents=True, exist_ok=True)
-            sequence = self.server.sequence
-            while (folder / f"{sequence:02d}.png").exists():
-                sequence += 1
-            (folder / f"{sequence:02d}.png").write_bytes(png)
-            self.server.sequence = sequence + 1
         except (IndexError, KeyError, TypeError, ValueError) as error:
-            self._reply(400, str(error).encode(), "text/plain; charset=utf-8")
+            self._send(400, str(error).encode(), "text/plain; charset=utf-8")
             return
-        self._reply(204, b"", "text/plain; charset=utf-8")
+        folder = self.server.root / "proof" / day
+        folder.mkdir(parents=True, exist_ok=True)
+        sequence = self.server.sequence
+        while (folder / f"{sequence:02d}.png").exists():
+            sequence += 1
+        (folder / f"{sequence:02d}.png").write_bytes(png)
+        self.server.sequence = sequence + 1
+        self._send(204, b"", "text/plain; charset=utf-8")
 
-    def _reply(self, status, body, content_type):
+    def _send(self, status, body, kind):
         self.send_response(status)
-        self.send_header("Content-Type", content_type)
+        self.send_header("Content-Type", kind)
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Cache-Control", "no-store")
         self.end_headers()
-        if self.command != "HEAD":
+        if self.command != "HEAD" and body:
             self.wfile.write(body)
 
 
