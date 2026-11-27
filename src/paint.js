@@ -122,6 +122,21 @@ export function plankTexture() {
   return finish(node, 2, 1);
 }
 
+export function shadowTexture() {
+  const size = 128;
+  const node = surface(size);
+  const ctx = node.getContext('2d');
+  const shade = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+  shade.addColorStop(0, 'rgba(18,26,34,0.55)');
+  shade.addColorStop(0.5, 'rgba(18,26,34,0.28)');
+  shade.addColorStop(1, 'rgba(18,26,34,0)');
+  ctx.fillStyle = shade;
+  ctx.fillRect(0, 0, size, size);
+  const texture = new THREE.CanvasTexture(node);
+  texture.encoding = THREE.sRGBEncoding;
+  return texture;
+}
+
 export function glowTexture() {
   const size = 128;
   const node = surface(size);

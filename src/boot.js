@@ -7,28 +7,66 @@ import { createLoop } from './loop.js';
 import { FLOOR_HEIGHT, TOWER_RADIUS, createPlayer, stepPlayer, surfaceSpeed } from './player.js';
 import { createScene } from './scene.js';
 import { clearShards, takeShard } from './shards.js';
-import { runSelfTest } from '../tools/measures.js';
-import { wrapDelta } from './vec.js';
+import { TAU, wrapAngle, wrapDelta } from './vec.js';
 
 const params = new URLSearchParams(location.search);
-const proofMode = params.has('proof');
-const testMode = params.has('test');
+const onDesk = location.hostname === '127.0.0.1' || location.hostname === 'localhost';
+const proofMode = params.has('proof') && onDesk;
+const testMode = params.has('test') && onDesk;
+const IDLE = { orbit: 0, jump: false, jumpHeld: false };
 
 const world = createScene(document.getElementById('tower'));
 const input = createInput();
-const hud = createHud(world.rings.length);
+const hud = createHud(world.floors, world.shards.length);
 const debug = createDebug();
+const wipe = document.getElementById('wipe');
 
-let player = createPlayer(world.rings[0].top);
+let player = createPlayer(world.ledges[0].top, world.ledges[0]);
 let taken = 0;
 let elapsed = 0;
+let reached = 0;
+let recover = 0;
+let wipeTimer = 0;
 let previousTheta = player.theta;
 let previousY = player.y;
 
-function demoControls(time) {
-  const jump = (time > 0.85 && time < 0.9) || (time > 1.95 && time < 2);
-  const holding = (time > 0.85 && time < 1.6) || (time > 1.95 && time < 2.7);
-  return { orbit: time > 0.12 ? 1 : 0, jump, jumpHeld: holding };
+// Proof mode has no hands. It looks at the nearest ledge ahead and leaves only
+// when its current spin can still put it down on that ledge, which is the same
+// judgement the gap widths were tuned for.
+const AIRTIME_UP = 0.72;
+const REACH_MARGIN = 0.06;
+
+function demoControls(runner) {
+  if (runner.deck && runner.deck.floor >= world.floors - 1) {
+    // Walk to the middle of the summit deck, then stand still so the capture
+    // has a stable final frame.
+    const centre = wrapAngle(runner.deck.theta + runner.deck.arc / 2);
+    const left = wrapAngle(centre - runner.theta);
+    return { orbit: left > Math.PI ? 0 : 1, jump: false, jumpHeld: false };
+  }
+
+  if (!runner.grounded || !runner.deck) {
+    return { orbit: 1, jump: false, jumpHeld: true };
+  }
+
+  let ahead = TAU;
+  for (const deck of world.ledges) {
+    if (deck === runner.deck || deck.top < runner.deck.top) continue;
+    if (deck.top > runner.deck.top + FLOOR_HEIGHT + 0.01) continue;
+    const gap = wrapAngle(deck.theta - runner.theta);
+    if (gap > 0.05 && gap < ahead) ahead = gap;
+  }
+
+  const reach = (surfaceSpeed(runner) / TOWER_RADIUS) * AIRTIME_UP;
+  const jump = ahead <= reach - REACH_MARGIN;
+
+  return { orbit: 1, jump, jumpHeld: !runner.grounded || jump };
+}
+
+function flashWipe() {
+  wipe.classList.add('on');
+  clearTimeout(wipeTimer);
+  wipeTimer = setTimeout(() => wipe.classList.remove('on'), 170);
 }
 
 function liveControls() {
@@ -38,8 +76,23 @@ function liveControls() {
 function step(dt) {
   previousTheta = player.theta;
   previousY = player.y;
-  stepPlayer(player, dt, proofMode ? demoControls(elapsed) : liveControls(), world.rings);
+
+  const controls = proofMode ? demoControls(player) : recover > 0 ? IDLE : liveControls();
+  const event = stepPlayer(player, dt, controls, world.ledges);
+
+  recover = Math.max(recover - dt, 0);
+
+  if (event.caught) {
+    flashWipe();
+    recover = 0.26;
+    // The catch moves you across the tower; keep interpolation from sweeping there.
+    previousTheta = player.theta;
+    previousY = player.y;
+  }
+
   elapsed += dt;
+  reached = Math.max(reached, Math.floor(player.y / FLOOR_HEIGHT + 0.001));
+
   if (takeShard(world.shards, player.theta, player.y, TOWER_RADIUS)) {
     taken += 1;
     hud.setShards(taken);
@@ -53,7 +106,7 @@ function draw(alpha) {
   const height = previousY + (player.y - previousY) * alpha;
   world.place(theta, height);
   world.render(elapsed);
-  hud.update(player, elapsed, Math.floor(player.y / FLOOR_HEIGHT));
+  hud.update(player, elapsed, reached);
 
   const now = performance.now();
   const frameMs = now - lastFrameAt;
@@ -81,11 +134,11 @@ fitCanvas();
 const spinUp = { orbit: 1, jump: false, jumpHeld: false };
 let worstRoll = 0;
 function measureRoll() {
-  const probe = createPlayer(world.rings[0].top);
-  for (let i = 0; i < 240; i += 1) stepPlayer(probe, 1 / 120, spinUp, world.rings);
+  const probe = createPlayer(world.ledges[0].top, world.ledges[0]);
+  for (let i = 0; i < 240; i += 1) stepPlayer(probe, 1 / 120, spinUp, world.ledges);
   let roll = 0;
   for (let i = 0; i < 720; i += 1) {
-    stepPlayer(probe, 1 / 120, spinUp, world.rings);
+    stepPlayer(probe, 1 / 120, spinUp, world.ledges);
     world.place(probe.theta, probe.y);
     roll = Math.max(roll, Math.abs(world.cameraRoll()));
   }
@@ -94,11 +147,15 @@ function measureRoll() {
 worstRoll = measureRoll();
 
 function reset() {
-  player = createPlayer(world.rings[0].top);
+  player = createPlayer(world.ledges[0].top, world.ledges[0]);
   taken = 0;
+  reached = 0;
+  recover = 0;
   clearShards(world.shards);
   hud.setShards(0);
   elapsed = 0;
+  input.clear();
+  loop.reset();
   previousTheta = player.theta;
   previousY = player.y;
   world.place(player.theta, player.y);
@@ -121,6 +178,7 @@ window.VERTIGO = {
       omega: player.omega,
       elapsed,
       taken,
+      falls: player.falls,
       roll: worstRoll,
     };
   },
@@ -129,21 +187,30 @@ window.VERTIGO = {
 if (testMode) {
   hud.hide();
   document.getElementById('touch-pad').hidden = true;
-  const rows = runSelfTest(worstRoll);
-  window.VERTIGO.testRows = rows;
-  window.VERTIGO.testFailures = rows.filter((row) => !row.ok).length;
-  const output = document.getElementById('test-output');
-  output.textContent = rows
-    .map(
-      (row) =>
-        (row.ok ? 'pass  ' : 'FAIL  ') +
-        row.label.padEnd(22) +
-        row.actual.padEnd(10) +
-        'want ' +
-        row.expected
-    )
-    .join('\n');
-  output.hidden = false;
+  // The measure table lives in tools/ so it never ships with the game.
+  import('../tools/measures.js')
+    .then((module) => {
+      const rows = module.runSelfTest(worstRoll);
+      window.VERTIGO.testRows = rows;
+      window.VERTIGO.testFailures = rows.filter((row) => !row.ok).length;
+      const output = document.getElementById('test-output');
+      output.textContent = rows
+        .map(
+          (row) =>
+            (row.ok ? 'pass  ' : 'FAIL  ') +
+            row.label.padEnd(24) +
+            row.actual.padEnd(14) +
+            'want ' +
+            row.expected
+        )
+        .join('\n');
+      output.hidden = false;
+    })
+    .catch((error) => {
+      const overlay = document.getElementById('dev-overlay');
+      overlay.hidden = false;
+      overlay.textContent = 'test table unavailable: ' + error.message;
+    });
 } else {
   world.place(player.theta, player.y);
   world.render(elapsed);

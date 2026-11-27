@@ -19,3 +19,7 @@ export function approach(current, target, maxDelta) {
   if (Math.abs(gap) <= maxDelta) return target;
   return current + Math.sign(gap) * maxDelta;
 }
+
+export function clamp(value, low, high) {
+  return Math.min(Math.max(value, low), high);
+}

@@ -10,18 +10,28 @@ function formatClock(seconds) {
   return minutes + ':' + rest + '.' + cents;
 }
 
-export function createHud(floorCount) {
+function pad(value) {
+  return String(value).padStart(2, '0');
+}
+
+export function createHud(floorCount, shardTotal) {
   const clock = document.getElementById('clock');
   const floor = document.getElementById('floor');
   const shards = document.getElementById('shard-count');
   const spinValue = document.getElementById('spin-value');
   const spinFill = document.getElementById('spin-fill');
 
+  function setShards(taken) {
+    shards.parentElement.hidden = false;
+    shards.textContent = pad(taken) + '/' + pad(shardTotal);
+  }
+
+  setShards(0);
+
   return {
     update(player, elapsed, floorIndex) {
       clock.textContent = formatClock(elapsed);
-      const reached = String(Math.min(floorIndex + 1, floorCount)).padStart(2, '0');
-      floor.textContent = reached + '/' + String(floorCount).padStart(2, '0');
+      floor.textContent = pad(Math.min(floorIndex + 1, floorCount)) + '/' + pad(floorCount);
 
       const spin = spinFraction(player);
       spinValue.textContent = surfaceSpeed(player).toFixed(1);
@@ -29,11 +39,7 @@ export function createHud(floorCount) {
       spinFill.style.background =
         spin > 0.75 ? 'var(--vermilion)' : spin > 0.35 ? 'var(--amber)' : 'var(--ice-dim)';
     },
-    setShards(taken) {
-      shards.parentElement.hidden = taken === 0;
-      shards.textContent =
-        String(taken).padStart(2, '0') + '/' + String(floorCount).padStart(2, '0');
-    },
+    setShards,
     hide() {
       document.getElementById('hud').hidden = true;
     },
