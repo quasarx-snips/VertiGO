@@ -1,0 +1,61 @@
+{
+  "day": 2,
+  "frames": ["01-orbit.png", "02-apex.png", "03-landing.png", "04-shard.png"],
+  "measures": [
+    {
+      "measure": "time to 7 m/s",
+      "brief": "<= 0.35 s",
+      "measured": "0.133 s",
+      "pass": true
+    },
+    {
+      "measure": "jump apex",
+      "brief": "3.6 +/- 0.1 m",
+      "measured": "3.546 m",
+      "pass": true
+    },
+    {
+      "measure": "airtime",
+      "brief": "0.98 +/- 0.02 s",
+      "measured": "1.000 s",
+      "pass": true
+    },
+    {
+      "measure": "arc per run jump",
+      "brief": "65 +/- 3 deg",
+      "measured": "66.8 deg",
+      "pass": true
+    },
+    {
+      "measure": "40 deg window at run",
+      "brief": "0.55 - 0.65 s",
+      "measured": "0.598 s",
+      "pass": true
+    },
+    {
+      "measure": "40 deg window at top",
+      "brief": "0.30 - 0.34 s",
+      "measured": "0.322 s",
+      "pass": true
+    },
+    {
+      "measure": "camera roll, full orbit",
+      "brief": "0.000 deg",
+      "measured": "0.000 deg",
+      "pass": true
+    },
+    {
+      "measure": "shards taken on the demo path",
+      "brief": ">= 1 by 2.20 s",
+      "measured": "1 at 2.20 s",
+      "pass": true
+    },
+    {
+      "measure": "draw cost, ten decks",
+      "brief": "<= 16 ms per frame",
+      "measured": "2.74 ms",
+      "pass": true
+    }
+  ],
+  "source": "tools/measures.js runSelfTest, camera roll from src/boot.js measureRoll, shard and draw-cost rows read from the running build"
+}
