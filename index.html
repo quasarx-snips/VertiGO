@@ -10,11 +10,12 @@
   </head>
   <body>
     <canvas id="tower"></canvas>
+    <div id="wipe" aria-hidden="true"></div>
 
     <div id="hud">
       <p id="hud-clock"><span id="clock">00:00.00</span><span id="floor"></span></p>
       <p id="hud-shards" hidden>
-        <span aria-hidden="true">&#9670;</span> <span id="shard-count">0/5</span>
+        <span aria-hidden="true">&#9670;</span> <span id="shard-count">0/0</span>
       </p>
       <p id="hud-spin"><span id="spin-value">0.0</span><span>m/s</span></p>
       <div id="spin-meter" aria-hidden="true"><span id="spin-fill"></span></div>
@@ -34,7 +35,9 @@
     <script src="src/vendor/three.min.js"></script>
     <script type="module" src="src/boot.js"></script>
     <script type="module">
-      if (new URLSearchParams(location.search).has('proof'))
+      const query = new URLSearchParams(location.search);
+      const onDesk = location.hostname === '127.0.0.1' || location.hostname === 'localhost';
+      if (query.has('proof') && onDesk)
         import('./tools/capture.js')
           .then((module) => module.setupCapture())
           .catch((error) => {

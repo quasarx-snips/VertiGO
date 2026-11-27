@@ -77,6 +77,11 @@ export function createInput() {
       return queued;
     },
     jumpHeld: () => jumpHeld,
+    clear() {
+      held.clear();
+      jumpQueued = false;
+      jumpHeld = false;
+    },
     onFirstInput(listener) {
       firstInputListeners.push(listener);
     },

@@ -1,14 +1,25 @@
-# BRIEF.md and decision.md are private working notes and must stay out of the public repo.
+# Working notes stay on this machine. README is the one page that belongs in
+# the public repo, so un-ignore it here when we write it.
+*.md
+!README.md
 BRIEF.md
 decision.md
+checklist.md
 
-node_modules/
-proof/raw/
-proof/*/palette*.png
+# Captured frames, gifs and metrics are proof for us, not files the game loads.
+proof/
+
+# Chat attachments and desktop clutter.
+.cloud-attachments/
+.freebuff/
 .DS_Store
 Thumbs.db
 .vscode/
 *.zip
 
+# Python byproducts.
 __pycache__/
 *.pyc
+
+# Dependencies.
+node_modules/

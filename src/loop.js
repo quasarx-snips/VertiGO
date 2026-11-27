@@ -35,5 +35,9 @@ export function createLoop({ stepHz, update, render }) {
       cancelAnimationFrame(handle);
       handle = 0;
     },
+    reset() {
+      accumulator = 0;
+      lastMs = performance.now();
+    },
   };
 }

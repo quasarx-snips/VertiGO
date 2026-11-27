@@ -121,6 +121,24 @@
   }
 }
 
+#wipe {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  background: radial-gradient(
+    circle at 50% 58%,
+    rgb(255 244 214 / 0%) 16%,
+    rgb(255 233 178 / 88%) 100%
+  );
+  transition: opacity 180ms ease-out;
+}
+
+#wipe.on {
+  opacity: 1;
+  transition-duration: 40ms;
+}
+
 #test-output {
   position: fixed;
   inset: 0;
