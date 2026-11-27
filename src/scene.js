@@ -165,7 +165,7 @@ export function createScene(canvas) {
   halo.scale.set(150, 150, 1);
   scene.add(halo);
 
-  scene.add(new THREE.HemisphereLight(0xd3e8f5, 0x1d4a5e, 0.5));
+  scene.add(new THREE.HemisphereLight(0xd3e8f5, 0x2b5566, 0.72));
   const key = new THREE.DirectionalLight(0xffd2a1, 1.65);
   key.position.copy(SUN_DIRECTION).multiplyScalar(60);
   key.castShadow = true;
