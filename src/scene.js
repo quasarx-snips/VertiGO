@@ -69,14 +69,38 @@ uniform vec3 deepColor;
 uniform vec3 lightColor;
 uniform vec3 sunColor;
 uniform vec3 horizonColor;
+uniform vec3 sunDirection;
 varying vec2 vFlat;
 varying float vSwell;
+
+float grain(vec2 spot) {
+  return fract(sin(dot(spot, vec2(127.1, 311.7))) * 43758.5453);
+}
+
+float glint(vec2 spot) {
+  vec2 cell = floor(spot);
+  vec2 offset = fract(spot) - 0.5;
+  vec2 centre = (vec2(grain(cell + 19.0), grain(cell + 41.0)) - 0.5) * 0.62;
+  float core = 1.0 - smoothstep(0.05, 0.17, length(offset - centre));
+  return core * step(0.62, grain(cell)) * (0.3 + 0.7 * grain(cell + 7.0));
+}
+
 void main() {
   float reach = length(vFlat);
-  vec3 color = mix(deepColor, lightColor, smoothstep(6.0, 120.0, reach) * 0.85);
-  float ripple = sin(vFlat.x * 0.9 + uTime * 1.6) * sin(vFlat.y * 0.75 - uTime * 1.2);
-  color += sunColor * smoothstep(0.9, 1.0, ripple + 0.15 * sin(vFlat.y * 2.3 - uTime * 0.7)) * 0.13;
-  color = mix(color, horizonColor, smoothstep(110.0, 250.0, reach) * 0.95);
+  vec3 color = mix(deepColor, lightColor, smoothstep(6.0, 110.0, reach) * 0.6);
+
+  vec3 toCamera = normalize(cameraPosition - vec3(vFlat.x, 0.0, vFlat.y));
+  vec3 bounce = reflect(-sunDirection, vec3(0.0, 1.0, 0.0));
+  float aim = max(dot(toCamera, bounce), 0.0);
+
+  vec2 spot = vFlat * 2.2 + vec2(uTime * 0.45, uTime * 0.28);
+  float clump = 0.3 + 0.9 * smoothstep(0.3, 0.95, grain(floor(vFlat * 0.15) + 3.0));
+  float twinkle = 0.6 + 0.4 * sin(uTime * 3.0 + grain(floor(spot) + 11.0) * 6.2832);
+  float closeness = 1.0 - smoothstep(45.0, 150.0, reach);
+  float fleck = glint(spot) * clump * twinkle * closeness;
+
+  color += sunColor * (fleck * (0.45 + 1.2 * pow(aim, 6.0)) + pow(aim, 140.0) * 0.3);
+  color = mix(color, horizonColor, smoothstep(70.0, 210.0, reach) * 0.95);
   gl_FragColor = vec4(color, 1.0);
 }
 `;
@@ -194,6 +218,7 @@ export function createScene(canvas) {
       lightColor: { value: new THREE.Color(SEA_LIGHT) },
       sunColor: { value: new THREE.Color(SUN_TINT) },
       horizonColor: { value: new THREE.Color(SKY_HORIZON) },
+      sunDirection: { value: SUN_DIRECTION },
     },
     vertexShader: SEA_VERTEX,
     fragmentShader: SEA_FRAGMENT,
