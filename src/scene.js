@@ -20,7 +20,8 @@ const FIELD_OF_VIEW = 52;
 const SUN_DIRECTION = new THREE.Vector3(0.72, 0.34, 0.4).normalize();
 const PLANKS_PER_RING = 26;
 
-export const RING_TOPS = [0, FLOOR_HEIGHT, FLOOR_HEIGHT * 2];
+export const FLOORS = 10;
+export const RING_TOPS = Array.from({ length: FLOORS }, (_, index) => index * FLOOR_HEIGHT);
 
 const SKY_VERTEX = `
 varying vec3 vView;
@@ -180,11 +181,12 @@ export function createScene(canvas) {
   fill.position.set(-24, 18, -30);
   scene.add(fill);
 
+  const towerHeight = FLOOR_HEIGHT * FLOORS + 8;
   const tower = new THREE.Mesh(
-    new THREE.CylinderGeometry(TOWER_RADIUS, TOWER_RADIUS, 34, 64, 1, true),
+    new THREE.CylinderGeometry(TOWER_RADIUS, TOWER_RADIUS, towerHeight, 64, 1, true),
     new THREE.MeshStandardMaterial({ map: stoneTexture(), roughness: 0.88, metalness: 0 })
   );
-  tower.position.y = 13;
+  tower.position.y = towerHeight / 2 - 4;
   tower.castShadow = true;
   tower.receiveShadow = true;
   scene.add(tower);
