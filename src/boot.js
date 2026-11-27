@@ -4,8 +4,9 @@ import { createDebug } from './debug.js';
 import { createHud } from './hud.js';
 import { createInput } from './input.js';
 import { createLoop } from './loop.js';
-import { FLOOR_HEIGHT, createPlayer, stepPlayer, surfaceSpeed } from './player.js';
+import { FLOOR_HEIGHT, TOWER_RADIUS, createPlayer, stepPlayer, surfaceSpeed } from './player.js';
 import { createScene } from './scene.js';
+import { clearShards, takeShard } from './shards.js';
 import { runSelfTest } from '../tools/measures.js';
 import { wrapDelta } from './vec.js';
 
@@ -19,6 +20,7 @@ const hud = createHud(world.rings.length);
 const debug = createDebug();
 
 let player = createPlayer(world.rings[0].top);
+let taken = 0;
 let elapsed = 0;
 let previousTheta = player.theta;
 let previousY = player.y;
@@ -38,6 +40,10 @@ function step(dt) {
   previousY = player.y;
   stepPlayer(player, dt, proofMode ? demoControls(elapsed) : liveControls(), world.rings);
   elapsed += dt;
+  if (takeShard(world.shards, player.theta, player.y, TOWER_RADIUS)) {
+    taken += 1;
+    hud.setShards(taken);
+  }
 }
 
 let lastFrameAt = performance.now();
@@ -89,6 +95,9 @@ worstRoll = measureRoll();
 
 function reset() {
   player = createPlayer(world.rings[0].top);
+  taken = 0;
+  clearShards(world.shards);
+  hud.setShards(0);
   elapsed = 0;
   previousTheta = player.theta;
   previousY = player.y;
@@ -106,7 +115,14 @@ window.VERTIGO = {
     draw(1);
   },
   metrics() {
-    return { theta: player.theta, y: player.y, omega: player.omega, elapsed, roll: worstRoll };
+    return {
+      theta: player.theta,
+      y: player.y,
+      omega: player.omega,
+      elapsed,
+      taken,
+      roll: worstRoll,
+    };
   },
 };
 

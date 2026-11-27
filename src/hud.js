@@ -29,9 +29,10 @@ export function createHud(floorCount) {
       spinFill.style.background =
         spin > 0.75 ? 'var(--vermilion)' : spin > 0.35 ? 'var(--amber)' : 'var(--ice-dim)';
     },
-    setShards(count) {
-      shards.parentElement.hidden = count === 0;
-      shards.textContent = count + '/5';
+    setShards(taken) {
+      shards.parentElement.hidden = taken === 0;
+      shards.textContent =
+        String(taken).padStart(2, '0') + '/' + String(floorCount).padStart(2, '0');
     },
     hide() {
       document.getElementById('hud').hidden = true;

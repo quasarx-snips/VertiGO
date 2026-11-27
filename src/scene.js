@@ -2,6 +2,7 @@
 
 import { FLOOR_HEIGHT, TOWER_RADIUS } from './player.js';
 import { glowTexture, plankTexture, stoneTexture } from './paint.js';
+import { createShards } from './shards.js';
 
 const SKY_TOP = 0x2e6a92;
 const SKY_HORIZON = 0xffd3a0;
@@ -243,6 +244,28 @@ export function createScene(canvas) {
   spark.castShadow = true;
   scene.add(spark);
 
+  const shards = createShards(RING_TOPS.map((top) => ({ top })));
+  const shardShape = new THREE.OctahedronGeometry(0.32, 0);
+  const shardMaterial = new THREE.MeshStandardMaterial({
+    color: 0x5c2b06,
+    emissive: 0xff8a1a,
+    emissiveIntensity: 1.1,
+    roughness: 0.25,
+    metalness: 0.1,
+  });
+  const shardShell = TOWER_RADIUS + 0.42;
+  for (const shard of shards) {
+    const gem = new THREE.Mesh(shardShape, shardMaterial);
+    gem.position.set(
+      Math.sin(shard.theta) * shardShell,
+      shard.y,
+      Math.cos(shard.theta) * shardShell
+    );
+    gem.castShadow = true;
+    shard.gem = gem;
+    scene.add(gem);
+  }
+
   const shell = TOWER_RADIUS + PLAYER_SHELL;
 
   function resize(width, height) {
@@ -276,6 +299,10 @@ export function createScene(canvas) {
 
   function render(elapsed = 0) {
     seaMaterial.uniforms.uTime.value = elapsed;
+    for (const shard of shards) {
+      shard.gem.visible = !shard.taken;
+      shard.gem.rotation.y = elapsed * 1.4;
+    }
     renderer.render(scene, camera);
   }
 
@@ -283,6 +310,7 @@ export function createScene(canvas) {
     renderer,
     camera,
     rings: RING_TOPS.map((top) => ({ top })),
+    shards,
     resize,
     place,
     cameraRoll,
